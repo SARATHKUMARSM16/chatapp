@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WanderChat — Traveller's Companion</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Nunito:wght@300;400;500;600;700&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            /* ── Warm Nature Palette ── */
+            --sage:       #5a8a6e;
+            --sage-hi:    #3d7a5c;
+            --sage-light: #8db89e;
+            --sage-pale:  #c8dfd1;
+            --sage-mist:  rgba(90,138,110,0.10);
+            --sage-glow:  rgba(90,138,110,0.20);
+            --sage-bor:   rgba(90,138,110,0.25);
+
+            --earth:      #8b6f47;
+            --earth-light:#b8956a;
+            --sky:        #5b8db8;
+            --sky-light:  #7aaed4;
+            --sunset:     #e07b4a;
+            --gold:       #d4a853;
+            --berry:      #c0495a;
+
+            /* ── Light Backgrounds ── */
+            --bg:         #f5f0e8;
+            --bg2:        #ede8df;
+            --card:       #faf7f2;
+            --card2:      #f2ede4;
+            --card3:      #ebe5da;
+
+            /* ── Text ── */
+            --text:       #2c3e2e;
+            --text-2:     #4a5e4c;
+            --text-3:     #7a8f7c;
+            --text-4:     #a8b8a9;
+
+            /* ── Borders ── */
+            --bor:        rgba(90,138,110,0.18);
+            --bor2:       rgba(90,138,110,0.30);
+            --bor-earth:  rgba(139,111,71,0.20);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%; overflow: hidden;
+            background: var(--bg);
+            font-family: 'Nunito', sans-serif;
+            color: var(--text);
+        }
+
+        /* ── Subtle paper texture overlay ── */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%235a8a6e' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            pointer-events: none; z-index: 0;
+        }
+
+        /* ── Warm ambient light ── */
+        body::after {
+            content: '';
+            position: fixed; inset: 0;
+            background:
+                radial-gradient(ellipse at 10% 0%, rgba(212,168,83,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 100%, rgba(90,138,110,0.08) 0%, transparent 50%);
+            pointer-events: none; z-index: 0;
+        }
+
+        /* ── Floating leaves ── */
+        .leaves {
+            position: fixed; inset: 0;
+            pointer-events: none; z-index: 0; overflow: hidden;
+        }
+        .leaf {
+            position: absolute; opacity: 0;
+            animation: leafDrift linear infinite;
+        }
+        .leaf:nth-child(1)  { left:4%;  width:18px; animation-duration:14s; animation-delay:0s; }
+        .leaf:nth-child(2)  { left:16%; width:12px; animation-duration:18s; animation-delay:3s; }
+        .leaf:nth-child(3)  { left:28%; width:20px; animation-duration:12s; animation-delay:7s; }
+        .leaf:nth-child(4)  { left:48%; width:14px; animation-duration:16s; animation-delay:2s; }
+        .leaf:nth-child(5)  { left:65%; width:16px; animation-duration:13s; animation-delay:5s; }
+        .leaf:nth-child(6)  { left:80%; width:11px; animation-duration:17s; animation-delay:9s; }
+        .leaf:nth-child(7)  { left:92%; width:15px; animation-duration:15s; animation-delay:4s; }
+        @keyframes leafDrift {
+            0%   { opacity:0; top:-4%;  transform:translateX(0)   rotate(0deg);   }
+            6%   { opacity:.75; }
+            90%  { opacity:.5; }
+            100% { opacity:0; top:104%; transform:translateX(45px) rotate(300deg); }
+        }
+
+        /* ── Birds (tiny v shapes) ── */
+        .bird {
+            position: fixed; pointer-events: none; z-index: 0;
+            opacity: 0; animation: birdFly linear infinite;
+            font-size: 11px; color: var(--text-3);
+        }
+        .bird:nth-child(1) { top:8%;  left:-5%;  animation-duration:22s; animation-delay:0s; }
+        .bird:nth-child(2) { top:14%; left:-5%;  animation-duration:28s; animation-delay:8s; }
+        .bird:nth-child(3) { top:6%;  left:-5%;  animation-duration:25s; animation-delay:15s; }
+        @keyframes birdFly {
+            0%   { opacity:0; transform:translateX(0); }
+            5%   { opacity:.6; }
+            90%  { opacity:.4; }
+            100% { opacity:0; transform:translateX(120vw); }
+        }
+
+        /* ── Main layout ── */
+        .app {
+            position: relative; z-index: 1;
+            display: flex; height: 100vh;
+            max-width: 1400px; margin: 0 auto;
+        }
+
+        /* ══════════════ SIDEBAR ══════════════ */
+        .sidebar {
+            width: 360px; flex-shrink: 0;
+            display: flex; flex-direction: column;
+            background: var(--card);
+            border-right: 2px solid var(--bor);
+            box-shadow: 2px 0 20px rgba(90,138,110,0.10);
+        }
+
+        /* Sidebar header */
+        .sidebar-top {
+            flex-shrink: 0;
+            background: linear-gradient(135deg, var(--sage) 0%, var(--sage-hi) 100%);
+            padding: 16px;
+            position: relative; overflow: hidden;
+        }
+        .sidebar-top::before {
+            content: '';
+            position: absolute; top: -30px; right: -30px;
+            width: 100px; height: 100px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+        }
+        .sidebar-top::after {
+            content: '';
+            position: absolute; bottom: -20px; left: -10px;
+            width: 70px; height: 70px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50%;
+        }
+        .sidebar-brand {
+            display: flex; align-items: center; gap: 10px;
+            position: relative; z-index: 1;
+        }
+        .brand-emblem {
+            width: 40px; height: 40px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; backdrop-filter: blur(4px);
+            border: 1.5px solid rgba(255,255,255,0.3);
+        }
+        .brand-words { flex: 1; }
+        .brand-name {
+            font-family: 'Lora', serif;
+            font-size: 17px; font-weight: 600;
+            color: #fff; letter-spacing: 0.5px;
+        }
+        .brand-tagline {
+            font-family: 'Fira Code', monospace;
+            font-size: 9px; color: rgba(255,255,255,0.75);
+            letter-spacing: 1.5px; text-transform: uppercase;
+            margin-top: 1px;
+        }
+
+        /* Tabs */
+        .tab-bar {
+            display: flex; flex-shrink: 0;
+            background: var(--card2);
+            border-bottom: 1px solid var(--bor);
+        }
+        .tab-btn {
+            flex: 1; padding: 11px 8px;
+            background: transparent; border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--text-3); font-family: 'Nunito', sans-serif;
+            font-size: 12px; font-weight: 600;
+            cursor: pointer; transition: all .2s;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+            letter-spacing: 0.3px;
+        }
+        .tab-btn:hover { color: var(--sage); background: var(--sage-mist); }
+        .tab-btn.active {
+            color: var(--sage-hi);
+            border-bottom-color: var(--sage);
+            background: var(--card);
+            font-weight: 700;
+        }
+        .tab-panel { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+        .tab-panel.active { display: flex; }
+
+        /* ── Map panel ── */
+        #mapPanel { position: relative; }
+        #leafletMap {
+            flex: 1; width: 100%; min-height: 0;
+            /* No dark filter — natural map colors */
+        }
+
+        .map-controls {
+            flex-shrink: 0; padding: 8px 10px;
+            background: var(--card2); border-top: 1px solid var(--bor);
+            display: flex; gap: 6px;
+        }
+        .map-btn {
+            flex: 1; padding: 7px 8px;
+            background: var(--card);
+            border: 1.5px solid var(--bor2);
+            border-radius: 20px;
+            color: var(--text-2); font-family: 'Nunito', sans-serif;
+            font-size: 11px; font-weight: 600;
+            cursor: pointer; transition: all .2s;
+            display: flex; align-items: center; justify-content: center; gap: 4px;
+        }
+        .map-btn:hover { border-color: var(--sage); color: var(--sage-hi); background: var(--sage-mist); }
+        .map-btn.active { background: var(--sage); border-color: var(--sage-hi); color: #fff; }
+
+        /* Pin list */
+        .pin-list {
+            flex-shrink: 0; max-height: 150px;
+            overflow-y: auto; border-top: 1px solid var(--bor);
+            background: var(--card);
+        }
+        .pin-list::-webkit-scrollbar { width: 3px; }
+        .pin-list::-webkit-scrollbar-thumb { background: var(--sage-pale); border-radius: 3px; }
+        .pin-item {
+            display: flex; align-items: center; gap: 9px;
+            padding: 8px 12px; border-bottom: 1px solid var(--bor);
+            cursor: pointer; transition: background .15s;
+        }
+        .pin-item:hover { background: var(--sage-mist); }
+        .pin-item:last-child { border-bottom: none; }
+        .pin-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+        .pin-info { flex: 1; min-width: 0; }
+        .pin-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pin-coords { font-family: 'Fira Code', monospace; font-size: 9px; color: var(--text-4); margin-top: 1px; }
+        .pin-del { background: transparent; border: none; color: var(--text-4); font-size: 13px; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: all .15s; }
+        .pin-del:hover { color: var(--berry); background: rgba(192,73,90,0.08); }
+        .pin-empty { padding: 16px; text-align: center; font-size: 12px; color: var(--text-4); font-style: italic; }
+
+        /* ── Pin prompt modal ── */
+        .pin-prompt {
+            position: fixed; inset: 0;
+            background: rgba(44,62,46,0.45);
+            z-index: 500; display: none;
+            align-items: center; justify-content: center;
+            backdrop-filter: blur(6px);
+        }
+        .pin-prompt.open { display: flex; }
+        .pin-prompt-box {
+            background: var(--card);
+            border: 1.5px solid var(--bor2);
+            border-radius: 20px; padding: 24px 22px;
+            width: 90%; max-width: 320px;
+            box-shadow: 0 20px 60px rgba(44,62,46,0.2);
+            animation: popUp .28s cubic-bezier(.34,1.4,.64,1) both;
+        }
+        @keyframes popUp { from{opacity:0;transform:scale(.92) translateY(12px)} to{opacity:1;transform:scale(1) translateY(0)} }
+        .pin-prompt-icon { font-size: 28px; text-align: center; margin-bottom: 8px; }
+        .pin-prompt-title { font-family: 'Lora', serif; font-size: 18px; color: var(--text); text-align: center; margin-bottom: 3px; }
+        .pin-prompt-sub { font-size: 12px; color: var(--text-3); text-align: center; margin-bottom: 16px; }
+        .pin-prompt-input {
+            width: 100%; padding: 11px 14px;
+            background: var(--bg);
+            border: 1.5px solid var(--bor2);
+            border-radius: 12px; color: var(--text);
+            font-family: 'Nunito', sans-serif; font-size: 14px;
+            outline: none; caret-color: var(--sage);
+            margin-bottom: 12px; transition: border-color .2s, box-shadow .2s;
+        }
+        .pin-prompt-input:focus { border-color: var(--sage); box-shadow: 0 0 0 3px var(--sage-glow); }
+        .pin-prompt-input::placeholder { color: var(--text-4); font-style: italic; }
+        .pin-prompt-btns { display: flex; gap: 8px; }
+        .pin-prompt-ok {
+            flex: 1; padding: 11px;
+            background: linear-gradient(135deg, var(--sage-hi), var(--sage-light));
+            border: none; border-radius: 12px;
+            color: #fff; font-family: 'Nunito', sans-serif;
+            font-size: 14px; font-weight: 700; cursor: pointer;
+            transition: all .2s; box-shadow: 0 3px 12px var(--sage-glow);
+        }
+        .pin-prompt-ok:hover { transform: translateY(-1px); filter: brightness(1.05); box-shadow: 0 6px 18px var(--sage-glow); }
+        .pin-prompt-cancel {
+            flex: 1; padding: 11px;
+            background: var(--bg2); border: 1.5px solid var(--bor);
+            border-radius: 12px; color: var(--text-3);
+            font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer;
+            transition: all .2s;
+        }
+        .pin-prompt-cancel:hover { border-color: var(--berry); color: var(--berry); }
+
+        /* ── Trip panel ── */
+        #tripPanel { overflow-y: auto; padding: 14px; background: var(--card); }
+        #tripPanel::-webkit-scrollbar { width: 3px; }
+        #tripPanel::-webkit-scrollbar-thumb { background: var(--sage-pale); border-radius: 3px; }
+
+        .trip-section-label {
+            font-family: 'Fira Code', monospace;
+            font-size: 10px; font-weight: 500;
+            color: var(--sage); letter-spacing: 2px;
+            text-transform: uppercase; margin-bottom: 10px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .trip-section-label::after { content: ''; flex: 1; height: 1px; background: var(--bor); }
+
+        .trip-form {
+            background: var(--bg);
+            border: 1.5px solid var(--bor);
+            border-radius: 16px; padding: 13px; margin-bottom: 14px;
+        }
+        .trip-input {
+            width: 100%; padding: 9px 12px;
+            background: var(--card);
+            border: 1.5px solid var(--bor);
+            border-radius: 10px; color: var(--text);
+            font-family: 'Nunito', sans-serif; font-size: 13px;
+            outline: none; caret-color: var(--sage);
+            margin-bottom: 7px; transition: border-color .2s, box-shadow .2s;
+        }
+        .trip-input:focus { border-color: var(--sage); box-shadow: 0 0 0 3px var(--sage-mist); }
+        .trip-input::placeholder { color: var(--text-4); font-style: italic; font-size: 12px; }
+        .trip-input:last-of-type { margin-bottom: 10px; }
+        .trip-row { display: flex; gap: 7px; margin-bottom: 7px; }
+        .trip-row .trip-input { margin-bottom: 0; }
+        .trip-save-btn {
+            width: 100%; padding: 10px;
+            background: linear-gradient(135deg, var(--sage-hi) 0%, var(--sage-light) 100%);
+            border: none; border-radius: 12px;
+            color: #fff; font-family: 'Nunito', sans-serif;
+            font-size: 13px; font-weight: 700;
+            cursor: pointer; transition: all .2s;
+            box-shadow: 0 3px 12px var(--sage-glow);
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .trip-save-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px var(--sage-glow); filter: brightness(1.05); }
+
+        /* Trip cards */
+        .trip-card {
+            background: var(--card);
+            border: 1.5px solid var(--bor);
+            border-radius: 14px; padding: 13px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--sage);
+            box-shadow: 0 2px 10px rgba(90,138,110,0.08);
+            animation: slideIn .3s cubic-bezier(.34,1.2,.64,1) both;
+        }
+        @keyframes slideIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+        .trip-card.status-going  { border-left-color: var(--gold); }
+        .trip-card.status-done   { border-left-color: var(--sky); }
+
+        .trip-card-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
+        .trip-card-name { font-family: 'Lora', serif; font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.3; }
+        .trip-card-del { background: transparent; border: none; color: var(--text-4); font-size: 14px; cursor: pointer; padding: 2px 5px; border-radius: 5px; transition: all .15s; }
+        .trip-card-del:hover { color: var(--berry); background: rgba(192,73,90,0.08); }
+
+        .trip-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 9px; }
+        .trip-meta-tag {
+            font-family: 'Fira Code', monospace;
+            font-size: 10px; color: var(--text-3);
+            background: var(--bg); border: 1px solid var(--bor);
+            padding: 2px 8px; border-radius: 10px;
+        }
+
+        .trip-route { display: flex; flex-direction: column; gap: 4px; }
+        .trip-stop {
+            display: flex; align-items: center; gap: 8px;
+            padding: 5px 9px; background: var(--bg);
+            border-radius: 8px; font-size: 12px; color: var(--text-2);
+            font-weight: 500;
+        }
+        .stop-pin { font-size: 12px; }
+
+        .trip-pills { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+        .trip-pill {
+            padding: 4px 10px; border-radius: 12px;
+            font-family: 'Fira Code', monospace; font-size: 9px; font-weight: 500;
+            letter-spacing: 0.5px; cursor: pointer; border: 1.5px solid transparent;
+            transition: all .2s;
+        }
+        .pill-plan  { background: rgba(90,138,110,.1); color: var(--sage); border-color: var(--sage-bor); }
+        .pill-plan.on  { background: var(--sage); color: #fff; border-color: var(--sage-hi); }
+        .pill-going { background: rgba(212,168,83,.12); color: var(--gold); border-color: rgba(212,168,83,.3); }
+        .pill-going.on { background: var(--gold); color: #fff; }
+        .pill-done  { background: rgba(91,141,184,.12); color: var(--sky); border-color: rgba(91,141,184,.3); }
+        .pill-done.on  { background: var(--sky); color: #fff; }
+        .trip-pill:hover { transform: translateY(-1px); filter: brightness(1.05); }
+
+        .trip-empty { text-align: center; padding: 24px 12px; font-size: 13px; color: var(--text-4); font-style: italic; line-height: 2; }
+
+        /* Sync badge */
+        .sync-tag { display: inline-flex; align-items: center; gap: 5px; font-family: 'Fira Code', monospace; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; padding: 3px 9px; border-radius: 10px; }
+        .sync-ok      { background: rgba(90,138,110,.12); color: var(--sage); border: 1px solid var(--sage-bor); }
+        .sync-err     { background: rgba(192,73,90,.1);   color: var(--berry); border: 1px solid rgba(192,73,90,.25); }
+        .sync-loading { background: rgba(212,168,83,.12); color: var(--gold);  border: 1px solid rgba(212,168,83,.3); }
+        .sync-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: pulse 1.3s ease-in-out infinite; }
+        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.7)} }
+
+        /* ══════════════ CHAT AREA ══════════════ */
+        .chat-area {
+            flex: 1; display: flex; flex-direction: column;
+            background: var(--bg); min-width: 0;
+        }
+
+        /* Chat header */
+        .chat-header {
+            flex-shrink: 0;
+            background: var(--card);
+            border-bottom: 1.5px solid var(--bor);
+            padding: 0 20px;
+            height: 66px;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 2px 12px rgba(90,138,110,0.08);
+        }
+        .chat-brand { display: flex; align-items: center; gap: 12px; }
+        .chat-icon {
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, var(--sage) 0%, var(--sage-light) 100%);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 3px 10px var(--sage-glow);
+        }
+        .chat-title {
+            font-family: 'Lora', serif; font-size: 18px;
+            font-weight: 600; color: var(--text);
+        }
+        .chat-sub {
+            font-family: 'Fira Code', monospace; font-size: 10px;
+            color: var(--text-3); letter-spacing: 1px;
+            text-transform: uppercase; margin-top: 1px;
+        }
+        .live-chip {
+            display: flex; align-items: center; gap: 7px;
+            background: rgba(90,138,110,0.1);
+            border: 1.5px solid var(--sage-bor);
+            border-radius: 20px; padding: 6px 14px;
+        }
+        .live-pulse {
+            width: 8px; height: 8px;
+            background: var(--sage); border-radius: 50%;
+            box-shadow: 0 0 6px var(--sage);
+            animation: pulse 1.4s ease-in-out infinite;
+        }
+        .live-label { font-family: 'Fira Code', monospace; font-size: 10px; font-weight: 500; color: var(--sage-hi); letter-spacing: 1.5px; }
+
+        /* Messages */
+        #messages {
+            flex: 1; overflow-y: auto;
+            padding: 20px 18px;
+            display: flex; flex-direction: column; gap: 12px;
+            scroll-behavior: smooth;
+        }
+        #messages::-webkit-scrollbar { width: 4px; }
+        #messages::-webkit-scrollbar-track { background: transparent; }
+        #messages::-webkit-scrollbar-thumb { background: var(--sage-pale); border-radius: 4px; }
+
+        /* Message bubbles */
+        .msg {
+            max-width: 76%; padding: 12px 16px;
+            position: relative; font-size: 14px; line-height: 1.65;
+            animation: msgIn .25s cubic-bezier(.34,1.3,.64,1) both;
+        }
+        @keyframes msgIn { from{opacity:0;transform:translateY(10px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
+
+        /* MY messages */
+        .me {
+            margin-left: auto;
+            background: linear-gradient(135deg, var(--sage) 0%, var(--sage-hi) 100%);
+            border-radius: 18px 18px 4px 18px;
+            box-shadow: 0 3px 14px var(--sage-glow);
+            color: #fff;
+        }
+        .me strong { color: rgba(255,255,255,0.8); }
+        .me .msg-text { color: #fff; }
+        .me small { color: rgba(255,255,255,0.6); }
+
+        /* OTHER messages */
+        .other {
+            margin-right: auto;
+            background: var(--card);
+            border: 1.5px solid var(--bor);
+            border-radius: 18px 18px 18px 4px;
+            box-shadow: 0 2px 10px rgba(44,62,46,0.07);
+        }
+        .other strong { color: var(--earth); }
+        .other .msg-text { color: var(--text); }
+        .other small { color: var(--text-4); }
+
+        .msg strong {
+            display: block;
+            font-family: 'Fira Code', monospace;
+            font-size: 10px; font-weight: 500;
+            letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 5px;
+        }
+        .msg-text { font-size: 14px; line-height: 1.65; word-break: break-word; }
+        .msg small { display: block; font-family: 'Fira Code', monospace; font-size: 9px; margin-top: 6px; text-align: right; }
+
+        /* Special cards */
+        .msg-trip { background: linear-gradient(135deg, #e8f4ec 0%, #f0f7f2 100%) !important; border: 1.5px solid var(--sage-bor) !important; color: var(--text) !important; box-shadow: 0 3px 14px rgba(90,138,110,0.12) !important; }
+        .trip-share-card { background: var(--bg); border: 1px solid var(--bor); border-radius: 10px; padding: 10px 12px; margin-top: 7px; }
+        .trip-share-title { font-family: 'Lora', serif; font-size: 13px; font-weight: 600; color: var(--sage-hi); margin-bottom: 5px; }
+        .trip-share-row { font-family: 'Fira Code', monospace; font-size: 9px; color: var(--text-3); letter-spacing: .5px; margin-bottom: 3px; }
+        .msg-trip strong { color: var(--sage-hi) !important; }
+        .msg-trip small  { color: var(--text-3) !important; }
+
+        .msg-pin .pin-share-card { background: rgba(212,168,83,0.08); border: 1px solid rgba(212,168,83,0.25); border-radius: 10px; padding: 9px 12px; margin-top: 6px; display: flex; gap: 9px; align-items: center; }
+        .pin-share-icon { font-size: 20px; flex-shrink: 0; }
+        .pin-share-name { font-weight: 700; font-size: 13px; color: var(--text); }
+        .pin-share-coords { font-family: 'Fira Code', monospace; font-size: 10px; color: var(--text-3); }
+        .msg-pin strong { color: var(--earth) !important; }
+
+        /* Typing indicator */
+        .typing-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; min-height: 22px; }
+        .typing-dots { display: flex; gap: 5px; align-items: center; }
+        .typing-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--sage-light); opacity: 0; animation: typeBounce 1.2s ease-in-out infinite; }
+        .typing-dots span:nth-child(2) { animation-delay: .15s; }
+        .typing-dots span:nth-child(3) { animation-delay: .30s; }
+        @keyframes typeBounce { 0%,60%,100%{opacity:0;transform:translateY(0)} 30%{opacity:1;transform:translateY(-4px)} }
+        .typing-label { font-family: 'Fira Code', monospace; font-size: 10px; color: var(--text-4); letter-spacing: 1px; font-style: italic; }
+
+        /* Input area */
+        .input-area {
+            flex-shrink: 0;
+            background: var(--card);
+            border-top: 1.5px solid var(--bor);
+            box-shadow: 0 -2px 12px rgba(90,138,110,0.07);
+        }
+        .action-row {
+            display: flex; gap: 6px;
+            padding: 10px 16px 0;
+        }
+        .action-chip {
+            display: flex; align-items: center; gap: 4px;
+            padding: 5px 11px;
+            background: var(--bg);
+            border: 1.5px solid var(--bor);
+            border-radius: 16px;
+            color: var(--text-3); font-family: 'Nunito', sans-serif;
+            font-size: 11px; font-weight: 600;
+            cursor: pointer; transition: all .18s;
+        }
+        .action-chip:hover { border-color: var(--sage); color: var(--sage-hi); background: var(--sage-mist); }
+        .action-chip:active { transform: scale(.95); }
+
+        .msg-row {
+            display: flex; align-items: center;
+            gap: 10px; padding: 10px 14px 14px;
+        }
+        .input-wrap { flex: 1; position: relative; }
+        input {
+            width: 100%; padding: 12px 46px 12px 16px;
+            background: var(--bg);
+            border: 1.5px solid var(--bor2);
+            border-radius: 24px; color: var(--text);
+            font-family: 'Nunito', sans-serif; font-size: 14px;
+            outline: none; transition: all .2s;
+            caret-color: var(--sage);
+        }
+        input::placeholder { color: var(--text-4); font-style: italic; font-size: 13px; }
+        input:focus { border-color: var(--sage); box-shadow: 0 0 0 3px var(--sage-mist); background: var(--card); }
+        .char-count { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-family: 'Fira Code', monospace; font-size: 9px; color: var(--text-4); pointer-events: none; transition: color .2s; }
+        button.send-btn {
+            width: 44px; height: 44px;
+            background: linear-gradient(135deg, var(--sage) 0%, var(--sage-light) 100%);
+            border: none; border-radius: 50%;
+            color: #fff; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all .18s; flex-shrink: 0;
+            box-shadow: 0 3px 12px var(--sage-glow);
+        }
+        button.send-btn:hover { transform: scale(1.08) rotate(5deg); box-shadow: 0 5px 18px var(--sage-glow); }
+        button.send-btn:active { transform: scale(.94); }
+        button.send-btn svg { transition: transform .15s; }
+
+        /* Status bar */
+        .status-row {
+            flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+            padding: 5px 16px; background: var(--bg2);
+            border-top: 1px solid var(--bor);
+        }
+        .sitem { display: flex; align-items: center; gap: 5px; font-family: 'Fira Code', monospace; font-size: 9px; color: var(--text-4); letter-spacing: .5px; }
+        .sdot { width: 5px; height: 5px; border-radius: 50%; background: var(--sage); box-shadow: 0 0 4px var(--sage); animation: pulse 1.5s ease-in-out infinite; }
+
+        /* Share trip modal */
+        .modal-bg { display: none; position: fixed; inset: 0; background: rgba(44,62,46,0.45); z-index: 300; align-items: center; justify-content: center; backdrop-filter: blur(6px); }
+        .modal-bg.open { display: flex; }
+        .modal { background: var(--card); border: 1.5px solid var(--bor2); border-radius: 20px; padding: 24px 22px; width: 90%; max-width: 340px; box-shadow: 0 20px 60px rgba(44,62,46,0.18); animation: popUp .28s cubic-bezier(.34,1.4,.64,1) both; }
+        .modal-title { font-family: 'Lora', serif; font-size: 19px; color: var(--text); margin-bottom: 3px; }
+        .modal-sub { font-family: 'Fira Code', monospace; font-size: 10px; color: var(--text-3); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 14px; }
+        .modal select { width: 100%; padding: 10px 13px; background: var(--bg); border: 1.5px solid var(--bor2); border-radius: 10px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 13px; outline: none; margin-bottom: 12px; caret-color: var(--sage); }
+        .modal-btns { display: flex; gap: 8px; }
+        .modal-ok { flex: 1; padding: 11px; background: linear-gradient(135deg, var(--sage-hi), var(--sage-light)); border: none; border-radius: 12px; color: #fff; font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: all .2s; box-shadow: 0 3px 12px var(--sage-glow); }
+        .modal-ok:hover { filter: brightness(1.05); transform: translateY(-1px); }
+        .modal-cancel { flex: 1; padding: 11px; background: var(--bg2); border: 1.5px solid var(--bor); border-radius: 12px; color: var(--text-3); font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s; }
+        .modal-cancel:hover { border-color: var(--berry); color: var(--berry); }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 1.5rem; right: 1.5rem;
+            background: var(--card); border: 1.5px solid var(--sage-bor);
+            border-radius: 14px; padding: 11px 18px;
+            font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 600;
+            color: var(--sage-hi); z-index: 999;
+            transform: translateY(60px); opacity: 0; transition: all .3s;
+            pointer-events: none; display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 8px 24px rgba(90,138,110,0.15);
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.err { border-color: rgba(192,73,90,.3); color: var(--berry); }
+
+        /* Leaflet overrides */
+        .leaflet-popup-content-wrapper { background: var(--card) !important; border: 1.5px solid var(--bor2) !important; border-radius: 14px !important; box-shadow: 0 8px 30px rgba(44,62,46,0.15) !important; color: var(--text) !important; }
+        .leaflet-popup-tip { background: var(--card) !important; }
+        .leaflet-popup-content { font-family: 'Nunito', sans-serif !important; font-size: 13px !important; color: var(--text) !important; margin: 12px 16px !important; }
+        .popup-name { font-family: 'Lora', serif; font-weight: 600; font-size: 14px; color: var(--text); margin-bottom: 3px; }
+        .popup-coords { font-family: 'Fira Code', monospace; font-size: 10px; color: var(--text-3); margin-bottom: 10px; }
+        .popup-btns { display: flex; gap: 7px; }
+        .popup-btn { padding: 6px 12px; border: 1.5px solid var(--sage-bor); border-radius: 10px; background: var(--sage-mist); color: var(--sage-hi); font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s; }
+        .popup-btn:hover { background: var(--sage); color: #fff; border-color: var(--sage); }
+        .popup-btn.danger { border-color: rgba(192,73,90,.25); color: var(--berry); background: rgba(192,73,90,0.07); }
+        .popup-btn.danger:hover { background: var(--berry); color: #fff; border-color: var(--berry); }
+        .leaflet-control-zoom { border: 1.5px solid var(--bor2) !important; border-radius: 10px !important; overflow: hidden; box-shadow: 0 2px 10px rgba(44,62,46,0.1) !important; }
+        .leaflet-control-zoom a { background: var(--card) !important; color: var(--sage-hi) !important; border-bottom: 1px solid var(--bor) !important; }
+        .leaflet-control-zoom a:hover { background: var(--sage-mist) !important; }
+    </style>
+</head>
+<body>
+
+<!-- Floating leaves -->
+<div class="leaves">
+    <svg class="leaf" viewBox="0 0 22 30" fill="none"><path d="M11 2C11 2 2 9 2 17c0 6 4 10 9 10s9-4 9-10C20 9 11 2 11 2Z" fill="rgba(90,138,110,0.35)"/><line x1="11" y1="27" x2="11" y2="10" stroke="rgba(90,138,110,0.25)" stroke-width="1.2"/></svg>
+    <svg class="leaf" viewBox="0 0 22 30" fill="none"><path d="M11 2C11 2 2 9 2 17c0 6 4 10 9 10s9-4 9-10C20 9 11 2 11 2Z" fill="rgba(139,111,71,0.25)"/><line x1="11" y1="27" x2="11" y2="10" stroke="rgba(139,111,71,0.18)" stroke-width="1.2"/></svg>
+    <svg class="leaf" viewBox="0 0 22 30" fill="none"><path d="M11 2C11 2 2 9 2 17c0 6 4 10 9 10s9-4 9-10C20 9 11 2 11 2Z" fill="rgba(90,138,110,0.45)"/><line x1="11" y1="27" x2="11" y2="10" stroke="rgba(90,138,110,0.3)" stroke-width="1.2"/></svg>
+    <svg class="leaf" viewBox="0 0 22 30" fill="none"><path d="M11 2C11 2 2 9 2 17c0 6 4 10 9 10s9-4 9-10C20 9 11 2 11 2Z" fill="rgba(212,168,83,0.3)"/><line x1="11" y1="27" x2="11" y2="10" stroke="rgba(212,168,83,0.22)" stroke-width="1.2"/></svg>
+    <svg class="leaf" viewBox="0 0 22 30" fill="none"><path d="M11 2C11 2 2 9 2 17c0 6 4 10 9 10s9-4 9-10C20 9 11 2 11 2Z" fill="rgba(90,138,110,0.28)"/><line x1="11" y1="27" x2="11" y2="10" stroke="rgba(90,138,110,0.2)" stroke-width="1.2"/></svg>
+    <svg class="leaf" viewBox="0 0 22 30" fill="none"><path d="M11 2C11 2 2 9 2 17c0 6 4 10 9 10s9-4 9-10C20 9 11 2 11 2Z" fill="rgba(139,111,71,0.22)"/><line x1="11" y1="27" x2="11" y2="10" stroke="rgba(139,111,71,0.15)" stroke-width="1.2"/></svg>
+    <svg class="leaf" viewBox="0 0 22 30" fill="none"><path d="M11 2C11 2 2 9 2 17c0 6 4 10 9 10s9-4 9-10C20 9 11 2 11 2Z" fill="rgba(90,138,110,0.38)"/><line x1="11" y1="27" x2="11" y2="10" stroke="rgba(90,138,110,0.28)" stroke-width="1.2"/></svg>
+</div>
+
+<!-- Flying birds -->
+<div class="bird">〜〜</div>
+<div class="bird">〜〜</div>
+<div class="bird">〜</div>
+
+<!-- Pin prompt -->
+<div class="pin-prompt" id="pinPrompt">
+    <div class="pin-prompt-box">
+        <div class="pin-prompt-icon">📍</div>
+        <div class="pin-prompt-title">Name this spot</div>
+        <div class="pin-prompt-sub">Add it to your travel journal</div>
+        <input class="pin-prompt-input" id="pinNameInput" placeholder="e.g. Sunrise viewpoint, Ooty..." maxlength="60"/>
+        <div class="pin-prompt-btns">
+            <button class="pin-prompt-ok" onclick="confirmPin()">📌 Pin It</button>
+            <button class="pin-prompt-cancel" onclick="cancelPin()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Share trip modal -->
+<div class="modal-bg" id="shareTripModal">
+    <div class="modal">
+        <div class="modal-title">Share Trip 🗺</div>
+        <div class="modal-sub">Send to fellow travellers</div>
+        <select id="shareTripSelect"></select>
+        <div class="modal-btns">
+            <button class="modal-ok" onclick="confirmShareTrip()">🌿 Share Now</button>
+            <button class="modal-cancel" onclick="closeTripModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- App layout -->
+<div class="app">
+
+    <!-- ══ SIDEBAR ══ -->
+    <div class="sidebar">
+
+        <!-- Sidebar header -->
+        <div class="sidebar-top">
+            <div class="sidebar-brand">
+                <div class="brand-emblem">🌿</div>
+                <div class="brand-words">
+                    <div class="brand-name">WanderMap</div>
+                    <div class="brand-tagline">Pin · Plan · Explore</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tab-bar">
+            <button class="tab-btn active" id="tabMap" onclick="switchTab('map')">
+                🗺 Map
+            </button>
+            <button class="tab-btn" id="tabTrip" onclick="switchTab('trip')">
+                ✈️ Trips
+            </button>
+        </div>
+
+        <!-- MAP PANEL -->
+        <div class="tab-panel active" id="mapPanel">
+            <div id="leafletMap"></div>
+            <div class="map-controls">
+                <button class="map-btn active" id="btnPin" onclick="setMapMode('pin')">📍 Pin</button>
+                <button class="map-btn" id="btnView" onclick="setMapMode('view')">🔍 Explore</button>
+                <button class="map-btn" id="btnGPS" onclick="shareCurrentLocation()">📡 My GPS</button>
+            </div>
+            <div style="padding:7px 12px 3px;display:flex;align-items:center;justify-content:space-between">
+                <div class="sync-tag sync-loading" id="pinSyncBadge"><div class="sync-dot"></div> Loading...</div>
+                <span style="font-family:'Fira Code',monospace;font-size:9px;color:var(--text-4)" id="pinCountLabel">0 pins</span>
+            </div>
+            <div class="pin-list" id="pinList">
+                <div class="pin-empty" id="pinEmpty">📍 Click the map to pin a spot</div>
+            </div>
+        </div>
+
+        <!-- TRIP PANEL -->
+        <div class="tab-panel" id="tripPanel">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <div class="trip-section-label">New Journey</div>
+                <div class="sync-tag sync-loading" id="tripSyncBadge"><div class="sync-dot"></div> Syncing</div>
+            </div>
+            <div class="trip-form">
+                <input class="trip-input" id="tripName" placeholder="Journey name..."/>
+                <div class="trip-row">
+                    <input class="trip-input" id="tripDate" type="date" style="flex:1;margin-bottom:0"/>
+                    <input class="trip-input" id="tripDays" type="number" min="1" max="30" placeholder="Days" style="width:70px;flex:none;margin-bottom:0"/>
+                </div>
+                <input class="trip-input" id="tripFrom" style="margin-top:7px" placeholder="🏠 Starting from..."/>
+                <input class="trip-input" id="tripTo" placeholder="🏔 Destination..."/>
+                <input class="trip-input" id="tripStops" placeholder="📍 Stops: Mettupalayam, Coonoor"/>
+                <button class="trip-save-btn" onclick="addTrip()">🌿 Save to Journal</button>
+            </div>
+            <div class="trip-section-label">My Journeys</div>
+            <div id="tripCards">
+                <div class="trip-empty" id="tripEmpty">✈️ No journeys planned yet<br>Start your first adventure!</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ CHAT ══ -->
+    <div class="chat-area">
+
+        <!-- Header -->
+        <div class="chat-header">
+            <div class="chat-brand">
+                <div class="chat-icon">💬</div>
+                <div>
+                    <div class="chat-title">Traveller's Chat</div>
+                    <div class="chat-sub">🌿 Share your adventures</div>
+                </div>
+            </div>
+            <div class="live-chip">
+                <div class="live-pulse"></div>
+                <span class="live-label">LIVE</span>
+            </div>
+        </div>
+
+        <!-- Messages -->
+        <div id="messages">
+            <div class="typing-row" id="typingRow" style="display:none">
+                <div class="typing-dots"><span></span><span></span><span></span></div>
+                <span class="typing-label">someone is typing...</span>
+            </div>
+        </div>
+
+        <!-- Input -->
+        <div class="input-area">
+            <div class="action-row">
+                <button class="action-chip" onclick="openTripModal()">🗓 Share Trip</button>
+                <button class="action-chip" onclick="shareLastPin()">📍 Share Pin</button>
+                <button class="action-chip" onclick="switchTab('map')">🗺 Map</button>
+                <button class="action-chip" onclick="switchTab('trip')">✈️ Trips</button>
+            </div>
+            <div class="msg-row">
+                <div class="input-wrap">
+                    <input id="msg" placeholder="Share your travel story..." maxlength="500" oninput="updateCount(this)" autocomplete="off">
+                    <span class="char-count" id="charCount">500</span>
+                </div>
+                <button class="send-btn" onclick="send()">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M2 8h12M9 3l5 5-5 5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Status bar -->
+        <div class="status-row">
+            <div class="sitem"><div class="sdot"></div> Connected</div>
+            <div class="sitem" id="msgCount">0 messages</div>
+            <div class="sitem" id="clock">--:--:--</div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════ ORIGINAL SCRIPT — ZERO CHANGES ══════════ -->
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script>
+    const socket = io("http://localhost:3001");
+    const name = localStorage.getItem("userName");
+    if (!name) { window.location.href = "/"; }
+
+    function addMessage(data) {
+        const div = document.createElement("div");
+        div.classList.add("msg");
+        if (data.name === name) { div.classList.add("me"); } else { div.classList.add("other"); }
+        div.innerHTML = `
+    <strong>${data.name}</strong>
+    <div class="msg-text">${data.message}</div>
+    <small>${data.time}</small>
+  `;
+        document.getElementById("messages").appendChild(div);
+        div.scrollIntoView();
+    }
+    socket.on("loadMessages", (msgs) => { msgs.forEach(addMessage); });
+    socket.on("receiveMessage", (msg) => { addMessage(msg); });
+    function send() {
+        const message = document.getElementById("msg").value;
+        if (!message) return;
+        const time = new Date().toLocaleTimeString();
+        const data = { name, message, time };
+        socket.emit("sendMessage", data);
+        document.getElementById("msg").value = "";
+    }
+</script>
+<!-- ══════════ END ORIGINAL SCRIPT ══════════ -->
+
+<!-- Design + Map + Trip + DB JS -->
+<script>
+// ── Enter to send ──────────────────────────────────────────────
+document.getElementById("msg").addEventListener("keydown", e => { if(e.key==="Enter") send(); });
+document.getElementById("pinNameInput").addEventListener("keydown", e => { if(e.key==="Enter") confirmPin(); });
+
+// ── Char counter ───────────────────────────────────────────────
+function updateCount(inp) {
+    const left = 500 - inp.value.length;
+    const el = document.getElementById("charCount");
+    el.textContent = left;
+    el.style.color = left<50?"#c0495a":left<150?"#d4a853":"#a8b8a9";
+}
+
+// ── Msg count + clock ──────────────────────────────────────────
+const _orig = addMessage;
+window.addMessage = function(data) {
+    _orig(data);
+    const n = document.getElementById("messages").querySelectorAll(".msg").length;
+    document.getElementById("msgCount").textContent = n + " messages";
+};
+(function tick(){ document.getElementById("clock").textContent=new Date().toLocaleTimeString("en-GB",{hour12:false}); setTimeout(tick,1000); })();
+
+// ── Toast ──────────────────────────────────────────────────────
+function showToast(msg, isErr) {
+    const t = document.getElementById("toast");
+    t.textContent = msg; t.className = "toast"+(isErr?" err":"");
+    t.classList.add("show"); setTimeout(()=>t.classList.remove("show"), 2800);
+}
+
+// ── Tabs ───────────────────────────────────────────────────────
+function switchTab(tab) {
+    document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    document.getElementById(tab==="map"?"mapPanel":"tripPanel").classList.add("active");
+    document.getElementById(tab==="map"?"tabMap":"tabTrip").classList.add("active");
+    if(tab==="map") setTimeout(()=>map.invalidateSize(), 60);
+}
+
+// ── Sync badge ─────────────────────────────────────────────────
+function setSyncBadge(id, state, msg) {
+    const el = document.getElementById(id);
+    el.className = "sync-tag sync-"+state;
+    el.innerHTML = `<div class="sync-dot"></div> ${msg}`;
+}
+
+// ══════════ MAP ══════════════════════════════════════════════
+const map = L.map("leafletMap", { zoomControl:true, attributionControl:false }).setView([11.0168,76.9558], 10);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:18 }).addTo(map);
+
+function makeIcon(color) {
+    return L.divIcon({
+        className: "",
+        html: `<div style="width:14px;height:14px;background:${color};border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.25)"></div>`,
+        iconSize:[14,14], iconAnchor:[7,14]
+    });
+}
+
+let mapMode="pin", pins=[], pinMarkers=[], pendingLatLng=null;
+
+function setMapMode(mode) {
+    mapMode = mode;
+    document.querySelectorAll(".map-btn").forEach(b=>b.classList.remove("active"));
+    const m={pin:"btnPin",view:"btnView",gps:"btnGPS"};
+    if(document.getElementById(m[mode])) document.getElementById(m[mode]).classList.add("active");
+    map.getContainer().style.cursor = mode==="pin"?"crosshair":"";
+}
+
+map.on("click", function(e) {
+    if(mapMode!=="pin") return;
+    pendingLatLng = e.latlng;
+    document.getElementById("pinNameInput").value="";
+    document.getElementById("pinPrompt").classList.add("open");
+    setTimeout(()=>document.getElementById("pinNameInput").focus(), 80);
+});
+
+function cancelPin() { pendingLatLng=null; document.getElementById("pinPrompt").classList.remove("open"); }
+
+async function confirmPin() {
+    const pinName = document.getElementById("pinNameInput").value.trim();
+    if(!pinName){ document.getElementById("pinNameInput").focus(); return; }
+    document.getElementById("pinPrompt").classList.remove("open");
+    const pinData = { name:pinName, lat:pendingLatLng.lat.toFixed(5), lng:pendingLatLng.lng.toFixed(5), user:name };
+    pendingLatLng = null;
+    setSyncBadge("pinSyncBadge","loading","Saving...");
+    try {
+        const res = await fetch("/pins",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(pinData)});
+        const saved = await res.json();
+        const pin = {_id:saved._id||saved.id||Date.now().toString(),...pinData};
+        pins.push(pin); addPinMarker(pin); renderPinList();
+        setSyncBadge("pinSyncBadge","ok","✓ Saved"); showToast("📍 "+pinName+" pinned!");
+    } catch(e) {
+        const pin = {_id:"local_"+Date.now(),...pinData};
+        pins.push(pin); addPinMarker(pin); renderPinList();
+        setSyncBadge("pinSyncBadge","err","⚠ Offline"); showToast("Saved locally",true);
+    }
+}
+
+function addPinMarker(pin) {
+    const color = pin.user===name?"#5a8a6e":"#d4a853";
+    const marker = L.marker([pin.lat,pin.lng],{icon:makeIcon(color)}).addTo(map);
+    marker.bindPopup(`
+        <div class="popup-name">📍 ${pin.name}</div>
+        <div class="popup-coords">${pin.lat}, ${pin.lng}</div>
+        <div style="font-size:11px;color:#7a8f7c;margin-bottom:10px">by ${pin.user||"unknown"}</div>
+        <div class="popup-btns">
+            <button class="popup-btn" onclick="sharePinToChat('${pin._id}')">💬 Share</button>
+            <button class="popup-btn danger" onclick="deletePin('${pin._id}')">✕ Remove</button>
+        </div>`);
+    pinMarkers.push({_id:pin._id, marker});
+}
+
+function renderPinList() {
+    const list = document.getElementById("pinList"), empty = document.getElementById("pinEmpty");
+    const count = pins.length;
+    document.getElementById("pinCountLabel").textContent = count+" pin"+(count!==1?"s":"");
+    if(count===0){ list.innerHTML=""; list.appendChild(empty); empty.style.display="block"; return; }
+    empty.style.display="none";
+    list.innerHTML = pins.map(p=>`
+        <div class="pin-item" onclick="flyToPin('${p._id}')">
+            <div class="pin-dot" style="background:${p.user===name?'#5a8a6e':'#d4a853'}"></div>
+            <div class="pin-info">
+                <div class="pin-name">${p.name}</div>
+                <div class="pin-coords">${p.lat}, ${p.lng}</div>
+            </div>
+            <button class="pin-del" onclick="event.stopPropagation();deletePin('${p._id}')">✕</button>
+        </div>`).join("");
+}
+
+function flyToPin(id) { const p=pins.find(x=>x._id===id); if(p){map.flyTo([p.lat,p.lng],15,{duration:1.2});switchTab('map');} }
+
+async function deletePin(id) {
+    const pm=pinMarkers.find(p=>p._id===id);
+    if(pm){map.removeLayer(pm.marker);pinMarkers=pinMarkers.filter(p=>p._id!==id);}
+    pins=pins.filter(p=>p._id!==id); renderPinList(); map.closePopup();
+    if(!id.startsWith("local_")) {
+        try{await fetch("/pins/"+id,{method:"DELETE"});setSyncBadge("pinSyncBadge","ok","✓ Removed");showToast("📍 Pin removed");}
+        catch(e){setSyncBadge("pinSyncBadge","err","⚠ Error");}
+    }
+}
+
+function sharePinToChat(id) {
+    const pin=pins.find(p=>p._id===id); if(!pin) return;
+    const time=new Date().toLocaleTimeString();
+    const div=document.createElement("div"); div.classList.add("msg","me","msg-pin");
+    div.innerHTML=`<strong>${name}</strong><div class="msg-text">📍 Shared a location</div><div class="pin-share-card"><div class="pin-share-icon">📍</div><div><div class="pin-share-name">${pin.name}</div><div class="pin-share-coords">${pin.lat}, ${pin.lng}</div></div></div><small>${time}</small>`;
+    document.getElementById("messages").appendChild(div); div.scrollIntoView();
+    socket.emit("sendMessage",{name,message:`📍 Pinned: ${pin.name} (${pin.lat}, ${pin.lng})`,time});
+    map.closePopup(); showToast("📍 Location shared!");
+}
+
+function shareLastPin(){
+    if(pins.length===0){showToast("Pin a spot on the map first!",true);return;}
+    sharePinToChat(pins[pins.length-1]._id);
+}
+
+function shareCurrentLocation(){
+    if(!navigator.geolocation){showToast("Geolocation not supported",true);return;}
+    showToast("📡 Finding your location...");
+    navigator.geolocation.getCurrentPosition(async pos=>{
+        const pinData={name:"📡 My Location",lat:pos.coords.latitude.toFixed(5),lng:pos.coords.longitude.toFixed(5),user:name};
+        setSyncBadge("pinSyncBadge","loading","Saving GPS...");
+        try{
+            const res=await fetch("/pins",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(pinData)});
+            const saved=await res.json();
+            const pin={_id:saved._id||saved.id||"local_"+Date.now(),...pinData};
+            pins.push(pin);addPinMarker(pin);renderPinList();map.flyTo([pin.lat,pin.lng],15);
+            setSyncBadge("pinSyncBadge","ok","✓ GPS saved");showToast("📡 Your location pinned!");
+        }catch(e){
+            const pin={_id:"local_"+Date.now(),...pinData};
+            pins.push(pin);addPinMarker(pin);renderPinList();map.flyTo([pin.lat,pin.lng],15);
+            setSyncBadge("pinSyncBadge","err","⚠ Offline");
+        }
+    },()=>showToast("Could not get location",true));
+}
+
+async function loadPinsFromDB(){
+    setSyncBadge("pinSyncBadge","loading","Loading pins...");
+    try{
+        const res=await fetch("/pins/"+encodeURIComponent(name));
+        const data=await res.json();
+        data.forEach(p=>{if(!pins.find(x=>x._id===p._id)){pins.push(p);addPinMarker(p);}});
+        renderPinList(); setSyncBadge("pinSyncBadge","ok","✓ "+pins.length+" pins");
+    }catch(e){setSyncBadge("pinSyncBadge","err","⚠ Offline");showToast("Could not load pins",true);}
+}
+
+// ══════════ TRIPS ══════════════════════════════════════════════
+let trips=[];
+
+async function addTrip(){
+    const tripName=document.getElementById("tripName").value.trim();
+    const from=document.getElementById("tripFrom").value.trim();
+    const to=document.getElementById("tripTo").value.trim();
+    if(!tripName||!from||!to){showToast("Fill journey name, from & to!",true);return;}
+    const tripData={name:tripName,date:document.getElementById("tripDate").value||"TBD",days:parseInt(document.getElementById("tripDays").value)||1,from,to,stops:document.getElementById("tripStops").value.split(",").map(s=>s.trim()).filter(Boolean),status:"planning",user:name};
+    setSyncBadge("tripSyncBadge","loading","Saving...");
+    try{
+        const res=await fetch("/trips",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(tripData)});
+        const saved=await res.json();
+        const trip={_id:saved._id||saved.id||"local_"+Date.now(),...tripData};
+        trips.push(trip);renderTrips();setSyncBadge("tripSyncBadge","ok","✓ Saved");showToast("✈️ "+tripName+" saved to journal!");
+    }catch(e){
+        const trip={_id:"local_"+Date.now(),...tripData};
+        trips.push(trip);renderTrips();setSyncBadge("tripSyncBadge","err","⚠ Offline");showToast("Saved locally",true);
+    }
+    ["tripName","tripFrom","tripTo","tripStops","tripDays"].forEach(id=>document.getElementById(id).value="");
+    document.getElementById("tripDate").value="";
+}
+
+function renderTrips(){
+    const container=document.getElementById("tripCards"),empty=document.getElementById("tripEmpty");
+    if(trips.length===0){empty.style.display="block";container.innerHTML="";container.appendChild(empty);return;}
+    empty.style.display="none";
+    container.innerHTML=trips.map(t=>`
+        <div class="trip-card status-${t.status}">
+            <div class="trip-card-head">
+                <div class="trip-card-name">✈️ ${t.name}</div>
+                <button class="trip-card-del" onclick="deleteTrip('${t._id}')">✕</button>
+            </div>
+            <div class="trip-meta">
+                <span class="trip-meta-tag">📅 ${t.date}</span>
+                <span class="trip-meta-tag">🌙 ${t.days} day${t.days>1?"s":""}</span>
+                <span class="trip-meta-tag">👤 ${t.user||name}</span>
+            </div>
+            <div class="trip-route">
+                <div class="trip-stop"><span class="stop-pin">🟢</span>${t.from}</div>
+                ${(t.stops||[]).map(s=>`<div class="trip-stop"><span class="stop-pin">🟡</span>${s}</div>`).join("")}
+                <div class="trip-stop"><span class="stop-pin">🔴</span>${t.to}</div>
+            </div>
+            <div class="trip-pills">
+                <span class="trip-pill pill-plan ${t.status==='planning'?'on':''}"  onclick="setTripStatus('${t._id}','planning')">Planning</span>
+                <span class="trip-pill pill-going ${t.status==='going'?'on':''}"    onclick="setTripStatus('${t._id}','going')">On the way 🛣</span>
+                <span class="trip-pill pill-done ${t.status==='done'?'on':''}"      onclick="setTripStatus('${t._id}','done')">Done ✓</span>
+            </div>
+        </div>`).join("");
+}
+
+async function setTripStatus(id,status){
+    const trip=trips.find(t=>t._id===id);
+    if(trip){trip.status=status;renderTrips();showToast("Journey status: "+status);}
+}
+
+async function deleteTrip(id){
+    trips=trips.filter(t=>t._id!==id);renderTrips();
+    if(!id.startsWith("local_")){
+        try{await fetch("/trips/"+id,{method:"DELETE"});setSyncBadge("tripSyncBadge","ok","✓ Deleted");showToast("Journey removed");}
+        catch(e){setSyncBadge("tripSyncBadge","err","⚠ Error");}
+    }
+}
+
+async function loadTripsFromDB(){
+    setSyncBadge("tripSyncBadge","loading","Loading...");
+    try{
+        const res=await fetch("/trips/"+encodeURIComponent(name));
+        const data=await res.json();
+        data.forEach(t=>{if(!trips.find(x=>x._id===t._id))trips.push(t);});
+        renderTrips();setSyncBadge("tripSyncBadge","ok","✓ "+trips.length+" trips");
+    }catch(e){setSyncBadge("tripSyncBadge","err","⚠ Offline");}
+}
+
+function openTripModal(){
+    if(trips.length===0){showToast("Plan a journey first!",true);return;}
+    const sel=document.getElementById("shareTripSelect");
+    sel.innerHTML=trips.map(t=>`<option value="${t._id}">${t.name} (${t.date})</option>`).join("");
+    document.getElementById("shareTripModal").classList.add("open");
+}
+function closeTripModal(){document.getElementById("shareTripModal").classList.remove("open");}
+function confirmShareTrip(){
+    const id=document.getElementById("shareTripSelect").value;
+    const trip=trips.find(t=>t._id===id); if(!trip) return;
+    const time=new Date().toLocaleTimeString();
+    const div=document.createElement("div"); div.classList.add("msg","me","msg-trip");
+    div.innerHTML=`<strong>${name}</strong><div class="msg-text">✈️ Shared a journey plan</div><div class="trip-share-card"><div class="trip-share-title">✈️ ${trip.name}</div><div class="trip-share-row">📅 ${trip.date} · ${trip.days} day(s) · ${trip.status}</div><div class="trip-share-row">🛣 ${trip.from}${(trip.stops||[]).length>0?" → "+trip.stops.join(" → "):"" } → ${trip.to}</div></div><small>${time}</small>`;
+    document.getElementById("messages").appendChild(div); div.scrollIntoView();
+    socket.emit("sendMessage",{name,message:`✈️ Journey: ${trip.name} | ${trip.date} | ${trip.from} → ${trip.to}`,time});
+    closeTripModal(); showToast("✈️ Journey shared!");
+}
+
+loadPinsFromDB();
+loadTripsFromDB();
+</script>
+
+</body>
+</html>

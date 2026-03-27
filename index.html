@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Enter Chat</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Nunito:wght@300;400;500;600;700&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #e8f0e4;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── Warm sky background ─────────────────── */
+    .bg-layer { position: fixed; inset: 0; z-index: 0; }
+    .bg-layer::before {
+      content: ''; position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse at 15% 10%,  rgba(212,168,83,0.18)  0%, transparent 50%),
+        radial-gradient(ellipse at 85% 15%,  rgba(91,141,184,0.14)  0%, transparent 45%),
+        radial-gradient(ellipse at 50% 100%, rgba(90,138,110,0.18)  0%, transparent 55%),
+        linear-gradient(180deg, #ddeedd 0%, #e8f0e4 40%, #f0ede4 100%);
+    }
+    .bg-layer::after {
+      content: ''; position: absolute; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%235a8a6e' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none;
+      animation: mistDrift 10s ease-in-out infinite alternate;
+    }
+    @keyframes mistDrift {
+      from { opacity: 0.7; transform: scale(1); }
+      to   { opacity: 1;   transform: scale(1.04); }
+    }
+
+    /* ── Floating leaves ─────────────────────── */
+    .leaves { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .leaf-svg { position: absolute; opacity: 0; animation: leafFall linear infinite; }
+    .leaf-svg:nth-child(1)  { left: 6%;  width: 20px; animation-duration: 12s; animation-delay: 0s; }
+    .leaf-svg:nth-child(2)  { left: 18%; width: 14px; animation-duration: 15s; animation-delay: 2s; }
+    .leaf-svg:nth-child(3)  { left: 33%; width: 22px; animation-duration: 10s; animation-delay: 5s; }
+    .leaf-svg:nth-child(4)  { left: 50%; width: 16px; animation-duration: 14s; animation-delay: 1s; }
+    .leaf-svg:nth-child(5)  { left: 66%; width: 20px; animation-duration: 11s; animation-delay: 3s; }
+    .leaf-svg:nth-child(6)  { left: 80%; width: 13px; animation-duration: 16s; animation-delay: 6s; }
+    .leaf-svg:nth-child(7)  { left: 91%; width: 18px; animation-duration: 12s; animation-delay: 8s; }
+    .leaf-svg:nth-child(8)  { left: 44%; width: 11px; animation-duration: 18s; animation-delay: 4s; }
+    @keyframes leafFall {
+      0%   { opacity: 0;    top: -5%;  transform: translateX(0)   rotate(0deg);   }
+      8%   { opacity: 0.75; }
+      90%  { opacity: 0.5;  }
+      100% { opacity: 0;    top: 105%; transform: translateX(55px) rotate(340deg); }
+    }
+
+    /* ── Birds ───────────────────────────────── */
+    .bird { position: fixed; pointer-events: none; z-index: 0; opacity: 0; animation: birdFly linear infinite; font-size: 11px; color: rgba(90,138,110,0.4); letter-spacing: 3px; }
+    .bird:nth-child(1) { top: 9%;  left: -5%; animation-duration: 24s; animation-delay: 0s; }
+    .bird:nth-child(2) { top: 16%; left: -5%; animation-duration: 30s; animation-delay: 10s; }
+    @keyframes birdFly {
+      0%   { opacity: 0;   transform: translateX(0); }
+      5%   { opacity: 0.5; }
+      90%  { opacity: 0.3; }
+      100% { opacity: 0;   transform: translateX(110vw); }
+    }
+
+    /* ── Grass ───────────────────────────────── */
+    .grass { position: fixed; bottom: 0; left: 0; right: 0; height: 120px; z-index: 0; pointer-events: none; }
+
+    /* ── Card ────────────────────────────────── */
+    .box {
+      position: relative; z-index: 10;
+      width: 380px; max-width: calc(100vw - 32px);
+      background: rgba(250,247,242,0.92);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1.5px solid rgba(90,138,110,0.25);
+      border-radius: 24px; padding: 42px 36px 36px;
+      box-shadow: 0 0 0 1px rgba(90,138,110,0.08), 0 20px 60px rgba(44,62,46,0.14), 0 4px 20px rgba(90,138,110,0.10);
+      animation: cardRise 0.65s cubic-bezier(0.34,1.3,0.64,1) both;
+    }
+    @keyframes cardRise {
+      from { opacity: 0; transform: translateY(28px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0)    scale(1); }
+    }
+    .box::before {
+      content: ''; position: absolute;
+      top: 0; left: 20%; right: 20%; height: 2.5px;
+      background: linear-gradient(90deg, transparent, #5a8a6e, transparent);
+      border-radius: 2px;
+    }
+
+    /* ── Icon ────────────────────────────────── */
+    .card-icon {
+      width: 60px; height: 60px; margin: 0 auto 18px;
+      background: linear-gradient(135deg, rgba(90,138,110,0.15) 0%, rgba(90,138,110,0.08) 100%);
+      border: 1.5px solid rgba(90,138,110,0.28);
+      border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px;
+      box-shadow: 0 4px 18px rgba(90,138,110,0.15);
+      animation: iconBreath 4s ease-in-out infinite;
+    }
+    @keyframes iconBreath {
+      0%,100% { box-shadow: 0 4px 18px rgba(90,138,110,0.15); transform: scale(1); }
+      50%      { box-shadow: 0 6px 26px rgba(90,138,110,0.28); transform: scale(1.04); }
+    }
+
+    /* ── Heading ─────────────────────────────── */
+    h2 {
+      font-family: 'Lora', serif; font-size: 22px; font-weight: 600;
+      color: #2c3e2e; text-align: center; margin-bottom: 5px;
+    }
+    .card-sub {
+      font-family: 'Fira Code', monospace; font-size: 10px; color: #8db89e;
+      text-align: center; margin-bottom: 28px; letter-spacing: 2.5px; text-transform: uppercase;
+    }
+
+    /* ── Label ───────────────────────────────── */
+    .input-label {
+      display: block; font-family: 'Fira Code', monospace;
+      font-size: 10px; font-weight: 500; color: #5a8a6e;
+      letter-spacing: 2px; text-transform: uppercase; margin-bottom: 7px;
+    }
+
+    /* ── Input ───────────────────────────────── */
+    .input-wrap { position: relative; margin-bottom: 16px; }
+    .input-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+    input {
+      width: 100%; padding: 13px 16px 13px 40px;
+      background: #f5f0e8; border: 1.5px solid rgba(90,138,110,0.25);
+      border-radius: 12px; color: #2c3e2e;
+      font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 500;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+      caret-color: #5a8a6e;
+    }
+    input::placeholder { color: #a8b8a9; font-style: italic; font-size: 13px; }
+    input:focus {
+      border-color: rgba(90,138,110,0.6); background: #faf7f2;
+      box-shadow: 0 0 0 3px rgba(90,138,110,0.10), 0 2px 14px rgba(90,138,110,0.08);
+    }
+
+    /* ── Button ──────────────────────────────── */
+    button {
+      width: 100%; padding: 14px;
+      background: linear-gradient(135deg, #3d7a5c 0%, #5a8a6e 60%, #8db89e 100%);
+      border: none; border-radius: 12px; color: #fff;
+      font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 18px rgba(61,122,92,0.35), 0 1px 0 rgba(255,255,255,0.15) inset;
+    }
+    button::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, #5a8a6e 0%, #8db89e 50%, #c8dfd1 100%);
+      opacity: 0; transition: opacity 0.2s;
+    }
+    button:hover::before { opacity: 1; }
+    button:hover { transform: translateY(-2px); box-shadow: 0 8px 26px rgba(61,122,92,0.4), 0 0 20px rgba(90,138,110,0.2); }
+    button:active { transform: translateY(0) scale(0.98); }
+    button span { position: relative; z-index: 1; }
+
+    /* ── Divider ─────────────────────────────── */
+    .divider { display: flex; align-items: center; gap: 10px; margin: 20px 0; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: rgba(90,138,110,0.15); }
+    .divider-leaf { font-size: 14px; }
+
+    /* ── Status ──────────────────────────────── */
+    #status {
+      min-height: 22px; text-align: center;
+      font-size: 13px; color: #5a8a6e; margin-top: 12px;
+      font-weight: 500; transition: color 0.3s;
+    }
+
+    /* ── Footer ──────────────────────────────── */
+    .card-footer {
+      margin-top: 18px; text-align: center;
+      font-family: 'Fira Code', monospace;
+      font-size: 9px; color: rgba(90,138,110,0.35);
+      letter-spacing: 2px; text-transform: uppercase;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="bg-layer"></div>
+
+  <!-- Floating leaves -->
+  <div class="leaves">
+    <svg class="leaf-svg" viewBox="0 0 22 30" fill="none"><path d="M11 2C11 2 2 9 2 17c0 6 4 10 9 10s9-4 9-10C20 9 11 2 11 2Z" fill="rgba(90,138,110,0.40)"/><line x1="11" y1="27" x2="11" y2="11" stroke="rgba(90,138,110,0.28)" stroke-width="1.2"/></svg>
+    <svg class="leaf-svg" viewBox="0 0 22 30" fill="none"><path d="M11 2C11 2 2 9 2 17c0 6 4 10 9 10s9-4 9-10C20 9 11 2 11 2Z" fill="rgba(139,111,71,0.28)"/><line x1="11" y1="27" x2="11" y2="11" stroke="rgba(139,111,71,0.20)" stroke-width="1.2"/></svg>
+    <svg class="leaf-svg" viewBox="0 0 22 30" fill="none"><path d="M11 2C11 2 2 9 2 17c0 6 4 10 9 10s9-4 9-10C20 9 11 2 11 2Z" fill="rgba(90,138,110,0.50)"/><line x1="11" y1="27" x2="11" y2="11" stroke="rgba(90,138,110,0.35)" stroke-width="1.2"/></svg>
+    <svg class="leaf-svg" viewBox="0 0 22 30" fill="none"><path d="M11 2C11 2 2 9 2 17c0 6 4 10 9 10s9-4 9-10C20 9 11 2 11 2Z" fill="rgba(212,168,83,0.30)"/><line x1="11" y1="27" x2="11" y2="11" stroke="rgba(212,168,83,0.22)" stroke-width="1.2"/></svg>
+    <svg class="leaf-svg" viewBox="0 0 22 30" fill="none"><path d="M11 2C11 2 2 9 2 17c0 6 4 10 9 10s9-4 9-10C20 9 11 2 11 2Z" fill="rgba(90,138,110,0.32)"/><line x1="11" y1="27" x2="11" y2="11" stroke="rgba(90,138,110,0.22)" stroke-width="1.2"/></svg>
+    <svg class="leaf-svg" viewBox="0 0 22 30" fill="none"><path d="M11 2C11 2 2 9 2 17c0 6 4 10 9 10s9-4 9-10C20 9 11 2 11 2Z" fill="rgba(139,111,71,0.22)"/><line x1="11" y1="27" x2="11" y2="11" stroke="rgba(139,111,71,0.15)" stroke-width="1.2"/></svg>
+    <svg class="leaf-svg" viewBox="0 0 22 30" fill="none"><path d="M11 2C11 2 2 9 2 17c0 6 4 10 9 10s9-4 9-10C20 9 11 2 11 2Z" fill="rgba(90,138,110,0.42)"/><line x1="11" y1="27" x2="11" y2="11" stroke="rgba(90,138,110,0.30)" stroke-width="1.2"/></svg>
+    <svg class="leaf-svg" viewBox="0 0 22 30" fill="none"><path d="M11 2C11 2 2 9 2 17c0 6 4 10 9 10s9-4 9-10C20 9 11 2 11 2Z" fill="rgba(212,168,83,0.25)"/><line x1="11" y1="27" x2="11" y2="11" stroke="rgba(212,168,83,0.18)" stroke-width="1.2"/></svg>
+  </div>
+
+  <!-- Birds -->
+  <div class="bird">〜〜</div>
+  <div class="bird">〜</div>
+
+  <!-- Grass -->
+  <svg class="grass" viewBox="0 0 1440 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0,80 Q20,40 40,70 Q60,100 80,60 Q100,20 120,55 Q140,90 160,50 Q180,10 200,60 Q220,110 240,65 Q260,20 280,70 Q300,90 320,55 Q340,20 360,65 Q380,110 400,60 Q420,10 440,55 Q460,100 480,50 Q500,0 520,60 Q540,110 560,70 Q580,30 600,65 Q620,100 640,55 Q660,10 680,60 Q700,110 720,65 Q740,20 760,60 Q780,100 800,55 Q820,10 840,65 Q860,110 880,60 Q900,10 920,55 Q940,100 960,65 Q980,30 1000,70 Q1020,110 1040,60 Q1060,10 1080,55 Q1100,100 1120,65 Q1140,30 1160,60 Q1180,90 1200,50 Q1220,10 1240,60 Q1260,110 1280,65 Q1300,20 1320,60 Q1340,100 1360,55 Q1380,10 1400,65 Q1420,110 1440,70 L1440,120 L0,120 Z" fill="rgba(90,138,110,0.30)"/>
+    <path d="M0,95 Q30,70 60,88 Q90,106 120,80 Q150,54 180,85 Q210,116 240,90 Q270,64 300,88 Q330,112 360,85 Q390,58 420,88 Q450,118 480,90 Q510,62 540,85 Q570,108 600,88 Q630,68 660,90 Q690,112 720,88 Q750,64 780,90 Q810,116 840,88 Q870,60 900,88 Q930,116 960,90 Q990,64 1020,88 Q1050,112 1080,88 Q1110,64 1140,90 Q1170,116 1200,88 Q1230,60 1260,90 Q1290,120 1320,88 Q1350,56 1380,88 Q1410,120 1440,95 L1440,120 L0,120 Z" fill="rgba(232,240,228,0.95)"/>
+  </svg>
+
+  <!-- ══ CARD ══ -->
+  <div class="box">
+
+    <div class="card-icon">🌿</div>
+
+    <h2>Enter Certificate ID</h2>
+    <div class="card-sub">✈️ Traveller's Gateway</div>
+
+    <label class="input-label">Certificate ID</label>
+
+    <div class="input-wrap">
+      <div class="input-icon">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+          <circle cx="7" cy="6" r="3.5" stroke="rgba(90,138,110,0.6)" stroke-width="1.3"/>
+          <path d="M7 9.5v5M5 12h4" stroke="rgba(90,138,110,0.6)" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <input type="text" id="certId" placeholder="Enter your Certificate ID...">
+    </div>
+
+    <button onclick="login()">
+      <span>Enter Chat →</span>
+    </button>
+
+    <div class="divider">
+      <span class="divider-leaf">🍃</span>
+    </div>
+
+    <p id="status"></p>
+
+    <div class="card-footer">Secure · Verified · Natural</div>
+
+  </div>
+
+  <!-- ══════════════ ORIGINAL SCRIPT — ZERO CHANGES ══════════════ -->
+  <script>
+async function login() {
+
+  const id = document.getElementById("certId").value.trim();
+  const status = document.getElementById("status");
+
+  if (!id) {
+    status.innerText = "⚠️ Enter Certificate ID";
+    return;
+  }
+
+  status.innerText = "Checking...";
+
+  try {
+
+    const res = await fetch("/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ certificateId: id })
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      status.innerText = "❌ Invalid Certificate";
+    } else {
+      localStorage.setItem("userName", data.name);
+      window.location.href = "chat.html";
+    }
+
+  } catch (err) {
+    status.innerText = "⚠️ Server error";
+  }
+}
+  </script>
+  <!-- ══════════════ END ORIGINAL SCRIPT ══════════════ -->
+
+  <!-- Design-only JS -->
+  <script>
+    document.getElementById("certId").addEventListener("keydown", e => {
+      if (e.key === "Enter") login();
+    });
+    setTimeout(() => document.getElementById("certId").focus(), 600);
+  </script>
+
+</body>
+</html>
