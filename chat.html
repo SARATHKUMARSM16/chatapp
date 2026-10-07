@@ -811,18 +811,51 @@
     const name = localStorage.getItem("userName");
     if (!name) { window.location.href = "/"; }
 
-    function addMessage(data) {
-        const div = document.createElement("div");
-        div.classList.add("msg");
-        if (data.name === name) { div.classList.add("me"); } else { div.classList.add("other"); }
-        div.innerHTML = `
-    <strong>${data.name}</strong>
-    <div class="msg-text">${data.message}</div>
-    <small>${data.time}</small>
-  `;
-        document.getElementById("messages").appendChild(div);
-        div.scrollIntoView();
+   function addMessage(data) {
+    const div = document.createElement("div");
+    div.classList.add("msg");
+
+    if (data.name === name) {
+        div.classList.add("me");
+    } else {
+        div.classList.add("other");
     }
+
+    div.innerHTML = `
+        <strong>${data.name}</strong>
+        <div class="msg-text">${data.message}</div>
+        <small>${data.time}</small>
+    `;
+
+    document.getElementById("messages").appendChild(div);
+    div.scrollIntoView();
+
+    // 📍 If this is a shared pin, show it on the receiver's map
+    const pinMatch = data.message.match(
+        /^📍 Pinned: (.+) \((-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\)$/
+    );
+
+    if (pinMatch) {
+        const pinName = pinMatch[1];
+        const lat = pinMatch[2];
+        const lng = pinMatch[3];
+
+        const sharedPin = {
+            _id: "shared_" + lat + "_" + lng + "_" + pinName,
+            name: pinName,
+            lat: lat,
+            lng: lng,
+            user: data.name
+        };
+
+        // Don't add the same shared pin twice
+        if (!pins.find(p => p._id === sharedPin._id)) {
+            pins.push(sharedPin);
+            addPinMarker(sharedPin);
+            renderPinList();
+        }
+    }
+}
     socket.on("loadMessages", (msgs) => { msgs.forEach(addMessage); });
     socket.on("receiveMessage", (msg) => { addMessage(msg); });
     function send() {
