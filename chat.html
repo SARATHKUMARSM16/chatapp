@@ -43,6 +43,28 @@
             --bor-earth:  rgba(139,111,71,0.20);
         }
 
+        /* ================= DARK THEME ================= */
+
+        [data-theme="dark"] {
+            --bg: #111714;
+            --bg2: #18211c;
+            --card: #1c2720;
+            --card2: #202d24;
+            --card3: #26342b;
+        
+            --text: #e8f1ea;
+            --text-2: #c1d0c4;
+            --text-3: #91a596;
+            --text-4: #64766a;
+        
+            --bor: rgba(141,184,158,0.18);
+            --bor2: rgba(141,184,158,0.30);
+            --bor-earth: rgba(184,149,106,0.20);
+        
+            --sage-mist: rgba(90,138,110,0.16);
+            --sage-glow: rgba(90,138,110,0.28);
+        }
+
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         html, body {
@@ -630,6 +652,31 @@
         .leaflet-control-zoom { border: 1.5px solid var(--bor2) !important; border-radius: 10px !important; overflow: hidden; box-shadow: 0 2px 10px rgba(44,62,46,0.1) !important; }
         .leaflet-control-zoom a { background: var(--card) !important; color: var(--sage-hi) !important; border-bottom: 1px solid var(--bor) !important; }
         .leaflet-control-zoom a:hover { background: var(--sage-mist) !important; }
+
+         /* Theme Toggle */
+
+        .theme-toggle {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: 1.5px solid var(--bor2);
+            background: var(--card);
+            color: var(--text);
+            font-size: 17px;
+            cursor: pointer;
+        
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        
+            transition: all .25s ease;
+        }
+        
+        .theme-toggle:hover {
+            background: var(--sage-mist);
+            border-color: var(--sage);
+            transform: rotate(15deg) scale(1.05);
+        }
     </style>
 </head>
 <body>
@@ -760,9 +807,14 @@
                     <div class="chat-sub">🌿 Share your adventures</div>
                 </div>
             </div>
-            <div class="live-chip">
-                <div class="live-pulse"></div>
-                <span class="live-label">LIVE</span>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+                    🌙
+                </button>
+                <div class="live-chip">
+                    <div class="live-pulse"></div>
+                    <span class="live-label">LIVE</span>
+                </div>
             </div>
         </div>
 
@@ -871,6 +923,41 @@
 
 <!-- Design + Map + Trip + DB JS -->
 <script>
+
+// ── Theme ─────────────────────────────────────────────
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute("data-theme");
+
+    if (currentTheme === "dark") {
+        document.documentElement.removeAttribute("data-theme");
+        localStorage.setItem("theme", "light");
+
+        document.getElementById("themeToggle").textContent = "🌙";
+    } else {
+        document.documentElement.setAttribute("data-theme", "dark");
+        localStorage.setItem("theme", "dark");
+
+        document.getElementById("themeToggle").textContent = "☀️";
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const savedTheme = localStorage.getItem("theme");
+    const toggle = document.getElementById("themeToggle");
+
+    if (savedTheme === "dark") {
+        document.documentElement.setAttribute("data-theme", "dark");
+
+        if (toggle) {
+            toggle.textContent = "☀️";
+        }
+    } else {
+        if (toggle) {
+            toggle.textContent = "🌙";
+        }
+    }
+});
 // ── Enter to send ──────────────────────────────────────────────
 document.getElementById("msg").addEventListener("keydown", e => { if(e.key==="Enter") send(); });
 document.getElementById("pinNameInput").addEventListener("keydown", e => { if(e.key==="Enter") confirmPin(); });
